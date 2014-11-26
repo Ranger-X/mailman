@@ -34,6 +34,7 @@ module Mailman
         @port       = options[:port] || 143
         @ssl        = options[:ssl] || false
         @folder     = options[:folder] || "INBOX"
+        @expunge    = options[:expunge] || true
       end
 
       # Connects to the IMAP server.
@@ -62,7 +63,7 @@ module Mailman
           @connection.store(message, '-FLAGS', @clear_flags) unless @clear_flags.blank?
         end
         # Clears messages that have the Deleted flag set
-        @connection.expunge
+        @connection.expunge if @expunge
       end
 
     end
