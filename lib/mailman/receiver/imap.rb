@@ -55,7 +55,7 @@ module Mailman
         @connection.search(@filter).each do |message|
           body = @connection.fetch(message, "RFC822")[0].attr["RFC822"]
           @processor.process(body)
-          @connection.store(message, "+FLAGS", @done_flags)
+          @connection.store(message, "+FLAGS", @done_flags) unless @done_flags.blank?
         end
         # Clears messages that have the Deleted flag set
         @connection.expunge
