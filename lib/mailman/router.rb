@@ -34,10 +34,12 @@ module Mailman
     # Route a message. If the route block accepts arguments, it passes any
     # captured params. Named params are available from the +params+ helper. The
     # message is available from the +message+ helper.
-    # @param [Mail::Message] the message to route.
-    def route(message)
+    # @param [Mail::Message] message the message to route.
+    # @param [Mailman::Receiver] receiver the receiver object of the message
+    def route(message, receiver)
       @params.clear
       @message = message
+      @receiver = receiver
       result = nil
 
       if @bounce_block and message.respond_to?(:bounced?) and message.bounced?
@@ -52,10 +54,10 @@ module Mailman
         @params.merge!(result[:params])
         if !result[:klass].nil?
           if result[:klass].is_a?(Class) # no instance method specified
-            result[:klass].new.send(:receive, @message, @params)
+            result[:klass].new.send(:receive, @message, @params, @receiver)
           elsif result[:klass].kind_of?(String) # instance method specified
             klass, method = result[:klass].split('#')
-            klass.camelize.constantize.new.send(method.to_sym, @message, @params)
+            klass.camelize.constantize.new.send(method.to_sym, @message, @params, @receiver)
           end
         elsif result[:block].arity > 0
           instance_exec(*result[:args], &result[:block])

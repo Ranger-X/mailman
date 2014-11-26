@@ -13,21 +13,22 @@ module Mailman
     # Converts a raw email into a +Mail::Message+ instance, and passes it to the
     # router.
     # @param [String] message the message to process
-    def process(message)
+    # @param [Mailman::Receiver] receiver the receiver object
+    def process(message, receiver)
       mail = Mail.new(message)
       from = mail.from.nil? ? "unknown" : mail.from.first
       Mailman.logger.info "Got new message from '#{from}' with subject '#{mail.subject}'."
 
       # Run any middlewares before routing the message
-      @config.middleware.run(mail) do
-        @router.route(mail)
+      @config.middleware.run(mail, receiver) do
+        @router.route(mail, receiver)
       end
     end
 
     # Processes a +Maildir::Message+ instance.
     def process_maildir_message(message)
       begin
-        process(message.data)
+        process(message.data, nil)
         message.process # move message to cur
         message.seen!
       rescue StandardError => error

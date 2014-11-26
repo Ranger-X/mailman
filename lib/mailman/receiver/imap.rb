@@ -57,7 +57,7 @@ module Mailman
       def get_messages
         @connection.search(@filter).each do |message|
           body = @connection.fetch(message, "RFC822")[0].attr["RFC822"]
-          @processor.process(body)
+          @processor.process(body, self)
           @connection.store(message, '+FLAGS', @done_flags) unless @done_flags.blank?
           @connection.store(message, '-FLAGS', @clear_flags) unless @clear_flags.blank?
         end
