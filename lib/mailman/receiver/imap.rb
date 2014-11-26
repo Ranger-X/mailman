@@ -19,6 +19,8 @@ module Mailman
       # @option options [String] :folder the mail folder to search
       # @option options [Array] :done_flags the flags to add to messages that
       #   have been processed
+      # @option options [Array] :clear_flags the flags to clear from messages
+      #   that have been processed
       # @option options [String] :filter the search filter to use to select
       #   messages to process
       def initialize(options)
@@ -28,6 +30,7 @@ module Mailman
         @password   = options[:password]
         @filter     = options[:filter] || 'UNSEEN'
         @done_flags = options[:done_flags] || [Net::IMAP::SEEN]
+        @clear_flags = options[:clear_flags]
         @port       = options[:port] || 143
         @ssl        = options[:ssl] || false
         @folder     = options[:folder] || "INBOX"
@@ -55,7 +58,8 @@ module Mailman
         @connection.search(@filter).each do |message|
           body = @connection.fetch(message, "RFC822")[0].attr["RFC822"]
           @processor.process(body)
-          @connection.store(message, "+FLAGS", @done_flags) unless @done_flags.blank?
+          @connection.store(message, '+FLAGS', @done_flags) unless @done_flags.blank?
+          @connection.store(message, '-FLAGS', @clear_flags) unless @clear_flags.blank?
         end
         # Clears messages that have the Deleted flag set
         @connection.expunge
