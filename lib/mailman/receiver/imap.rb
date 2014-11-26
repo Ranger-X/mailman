@@ -44,6 +44,7 @@ module Mailman
 
       # Disconnects from the IMAP server.
       def disconnect
+        return true if @connection.nil? || @connection.disconnected?
         @connection.logout
         @connection.disconnected? ? true : @connection.disconnect rescue nil
       end
