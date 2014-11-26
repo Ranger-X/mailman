@@ -57,8 +57,9 @@ module Mailman
       # flagging them as done.
       def get_messages
         @connection.search(@filter).each do |message|
-          body = @connection.fetch(message, "RFC822")[0].attr["RFC822"]
-          @processor.process(body, self)
+          fetch_data = @connection.fetch(message, "RFC822")[0]
+          body = fetch_data.attr["RFC822"]
+          @processor.process(body, self, fetch_data)
           @connection.store(message, '+FLAGS', @done_flags) unless @done_flags.blank?
           @connection.store(message, '-FLAGS', @clear_flags) unless @clear_flags.blank?
         end

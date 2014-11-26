@@ -36,10 +36,13 @@ module Mailman
     # message is available from the +message+ helper.
     # @param [Mail::Message] message the message to route.
     # @param [Mailman::Receiver] receiver the receiver object of the message
-    def route(message, receiver)
+    # @param [Net::IMAP::FetchData] fetch_data the FetchData object for a
+    # current message
+    def route(message, receiver, fetch_data = nil)
       @params.clear
       @message = message
       @receiver = receiver
+      @fetch_data = fetch_data
       result = nil
 
       if @bounce_block and message.respond_to?(:bounced?) and message.bounced?
@@ -54,10 +57,12 @@ module Mailman
         @params.merge!(result[:params])
         if !result[:klass].nil?
           if result[:klass].is_a?(Class) # no instance method specified
-            result[:klass].new.send(:receive, @message, @params, @receiver)
+            result[:klass].new.send(:receive, @message, @params, @receiver,
+                                    @fetch_data)
           elsif result[:klass].kind_of?(String) # instance method specified
             klass, method = result[:klass].split('#')
-            klass.camelize.constantize.new.send(method.to_sym, @message, @params, @receiver)
+            klass.camelize.constantize.new.send(method.to_sym, @message, @params,
+                                                @receiver, @fetch_data)
           end
         elsif result[:block].arity > 0
           instance_exec(*result[:args], &result[:block])
