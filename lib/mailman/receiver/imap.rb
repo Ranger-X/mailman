@@ -23,18 +23,24 @@ module Mailman
       #   that have been processed
       # @option options [String] :filter the search filter to use to select
       #   messages to process
+      # @option options [Proc] :on_login the block, that be called when we
+      #   successfully logged in to server
+      # @option options [boolean] :one_time_connect whether or not to connect
+      #   only once to the server. Set it to false for a default behaviour
       def initialize(options)
-        @processor = options[:processor]
-        @server = options[:server]
-        @username = options[:username]
-        @password = options[:password]
-        @filter = options[:filter] || 'UNSEEN'
+        @processor  = options[:processor]
+        @server     = options[:server]
+        @username   = options[:username]
+        @password   = options[:password]
+        @filter     = options[:filter] || 'UNSEEN'
         @done_flags = options[:done_flags] || [Net::IMAP::SEEN]
         @clear_flags = options[:clear_flags]
-        @port = options[:port] || 143
-        @ssl = options[:ssl] || false
-        @folder = options[:folder] || "INBOX"
-        @expunge = options[:expunge] || true
+        @port       = options[:port] || 143
+        @ssl        = options[:ssl] || false
+        @folder     = options[:folder] || "INBOX"
+        @expunge    = options[:expunge] || true
+        @on_login_block = options[:on_login]
+        @one_time   = options[:one_time_connect] || false
       end
 
       # Connects to the IMAP server.
@@ -42,15 +48,19 @@ module Mailman
         if @connection.nil? or @connection.disconnected?
           @connection = Net::IMAP.new(@server, port: @port, ssl: @ssl)
           @connection.login(@username, @password)
+          @on_login_block.call(self) if @on_login_block.present?
         end
         @connection.select(@folder)
       end
 
       # Disconnects from the IMAP server.
-      def disconnect
+      def disconnect(force = false)
         return true if @connection.nil? || @connection.disconnected?
-        @connection.logout
-        @connection.disconnected? ? true : @connection.disconnect rescue nil
+        # do not disconnect, if we in one-time-connect mode
+        if !@one_time || force
+          @connection.logout
+          @connection.disconnected? ? true : @connection.disconnect rescue nil
+        end
       end
 
       # Iterates through new messages, passing them to the processor, and
