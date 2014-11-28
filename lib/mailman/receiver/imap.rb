@@ -24,17 +24,17 @@ module Mailman
       # @option options [String] :filter the search filter to use to select
       #   messages to process
       def initialize(options)
-        @processor  = options[:processor]
-        @server     = options[:server]
-        @username   = options[:username]
-        @password   = options[:password]
-        @filter     = options[:filter] || 'UNSEEN'
+        @processor = options[:processor]
+        @server = options[:server]
+        @username = options[:username]
+        @password = options[:password]
+        @filter = options[:filter] || 'UNSEEN'
         @done_flags = options[:done_flags] || [Net::IMAP::SEEN]
         @clear_flags = options[:clear_flags]
-        @port       = options[:port] || 143
-        @ssl        = options[:ssl] || false
-        @folder     = options[:folder] || "INBOX"
-        @expunge    = options[:expunge] || true
+        @port = options[:port] || 143
+        @ssl = options[:ssl] || false
+        @folder = options[:folder] || "INBOX"
+        @expunge = options[:expunge] || true
       end
 
       # Connects to the IMAP server.
@@ -56,15 +56,25 @@ module Mailman
       # Iterates through new messages, passing them to the processor, and
       # flagging them as done.
       def get_messages
-        @connection.search(@filter).each do |message|
-          fetch_data = @connection.fetch(message, "RFC822")[0]
-          body = fetch_data.attr["RFC822"]
-          @processor.process(body, self, fetch_data)
-          @connection.store(message, '+FLAGS', @done_flags) unless @done_flags.blank?
-          @connection.store(message, '-FLAGS', @clear_flags) unless @clear_flags.blank?
+        begin
+          @connection.search(@filter).each do |message|
+            fetch_data = @connection.fetch(message, "RFC822")[0]
+            body = fetch_data.attr["RFC822"]
+            @processor.process(body, self, fetch_data)
+            @connection.store(message, '+FLAGS', @done_flags) unless @done_flags.blank?
+            @connection.store(message, '-FLAGS', @clear_flags) unless @clear_flags.blank?
+          end
+          # Clears messages that have the Deleted flag set
+          @connection.expunge if @expunge
+        rescue NoMethodError
+          # just ignore errors like .../lib/ruby/1.9.1/net/imap.rb:1332:in
+          # `block in search_internal': undefined method `[]' for nil:NilClass
+          # (NoMethodError)
+          # It's encountered when the searchable mailbox folder
+          # (INBOX by default) is empty
+        rescue StandardError => error
+          Mailman.logger.error "Error encountered while receiving messages from IMAP: #{error.class.to_s}: #{error.message}\n #{error.backtrace.join("\n")}"
         end
-        # Clears messages that have the Deleted flag set
-        @connection.expunge if @expunge
       end
 
     end
